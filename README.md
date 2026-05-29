@@ -284,6 +284,14 @@ combine_images(
 
 ---
 
+## ❤️ Sponsoring
+
+If this tool saves you time, consider supporting its development:
+
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github)](https://github.com/sponsors/csbisht)
+
+---
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).

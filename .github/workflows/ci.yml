@@ -26,6 +26,24 @@ jobs:
       - name: Run tests
         run: python -m pytest tests/ -v
 
+  audit:
+    name: Dependency CVE scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Run pip-audit
+        run: pip-audit -r requirements.txt
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

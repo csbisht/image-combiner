@@ -286,4 +286,7 @@ combine_images(
 
 ## License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).
+
+You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of this software.
+The only requirement is that the original copyright notice and this permission notice are included in all copies or substantial portions of the software.

@@ -28,13 +28,13 @@ Sometimes you need to merge several images into one without opening a photo edit
 | macOS    | Yes       |
 | Linux    | Yes       |
 
-Runs anywhere Python 3.8+ is installed.
+Runs anywhere Python 3.10+ is installed.
 
 ---
 
 ## Prerequisites
 
-**Python 3.8 or higher** — works on Windows, macOS, and Linux (Ubuntu / Debian).
+**Python 3.10 or higher** — works on Windows, macOS, and Linux (Ubuntu / Debian).
 
 ### Set up a virtual environment and install dependencies
 
@@ -284,6 +284,17 @@ combine_images(
 
 ---
 
+## ❤️ Sponsoring
+
+If this tool saves you time, consider supporting its development:
+
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-pink?logo=github)](https://github.com/sponsors/csbisht)
+
+---
+
 ## License
 
-MIT
+This project is licensed under the [MIT License](LICENSE).
+
+You are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of this software.
+The only requirement is that the original copyright notice and this permission notice are included in all copies or substantial portions of the software.

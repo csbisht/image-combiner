@@ -5,14 +5,25 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import warnings
 from pathlib import Path
 from typing import Iterable
 
 from PIL import Image
 
+try:
+    from importlib.metadata import version as _pkg_version
+    __version__ = _pkg_version("image-combiner")
+except Exception:
+    __version__ = "0.1.0"
+
 __all__ = ["combine_images", "main"]
 
 _IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp"}
+
+# Matches Pillow's own default — set explicitly inside combine_images() and restored,
+# so importing this module never mutates the caller's global.
+_BOMB_PIXEL_LIMIT = 89_478_485
 
 
 def _natural_sort_key(path: Path) -> list:
@@ -52,10 +63,18 @@ def combine_images(
     if not (1 <= quality <= 95):
         raise ValueError("quality must be between 1 and 95")
 
-    images: list[Image.Image] = []
+    _saved_max_pixels = Image.MAX_IMAGE_PIXELS
+    Image.MAX_IMAGE_PIXELS = _BOMB_PIXEL_LIMIT
     try:
+        images: list[Image.Image] = []
         for path in image_paths:
-            images.append(Image.open(path).convert("RGBA"))
+            with Image.open(path) as raw:
+                if getattr(raw, "n_frames", 1) > 1:
+                    warnings.warn(
+                        f"{path}: multi-frame image; only the first frame will be used.",
+                        stacklevel=2,
+                    )
+                images.append(raw.convert("RGBA"))
 
         if not images:
             raise ValueError("No images provided")
@@ -93,8 +112,7 @@ def combine_images(
         else:
             canvas.save(output_path, **save_kwargs)
     finally:
-        for img in images:
-            img.close()
+        Image.MAX_IMAGE_PIXELS = _saved_max_pixels
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -110,9 +128,9 @@ def _build_parser() -> argparse.ArgumentParser:
             "  jpg, jpeg, png, gif, bmp, tiff, tif, webp\n"
             "\n"
             "examples:\n"
-            "  python3 image_combiner.py a.jpg b.jpg                          # vertical stack → combined.jpg\n"
+            "  python3 image_combiner.py a.jpg b.jpg                          # vertical stack -> combined.jpg\n"
             "  python3 image_combiner.py a.jpg b.jpg -o result.jpg            # save to result.jpg\n"
-            "  python3 image_combiner.py a.jpg b.jpg -d horizontal            # side by side → combined.jpg\n"
+            "  python3 image_combiner.py a.jpg b.jpg -d horizontal            # side by side -> combined.jpg\n"
             "  python3 image_combiner.py a.jpg b.jpg c.jpg -o out.png         # three images, PNG output\n"
             "  python3 image_combiner.py photos/*                             # all images in folder,\n"
             "                                                                  # auto-sorted and filtered\n"
@@ -152,6 +170,11 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="DPI",
         help="Set output DPI metadata (e.g. 72=screen, 150=medium, 300=print; default: not set)",
     )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     return parser
 
 
@@ -172,9 +195,6 @@ def main(argv: list[str] | None = None) -> None:
         _print_brief_help(parser)
         sys.exit(0)
     args = parser.parse_args(argv)
-    if not (1 <= args.quality <= 95):
-        print("Error: --quality must be between 1 and 95", file=sys.stderr)
-        sys.exit(1)
     image_files = _filter_and_sort(args.images)
     skipped = set(args.images) - {str(p) for p in image_files}
     for s in sorted(skipped):

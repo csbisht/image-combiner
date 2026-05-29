@@ -3,7 +3,7 @@ from pathlib import Path
 from PIL import Image
 
 from image_combiner import combine_images
-from image_combiner import _filter_and_sort, _natural_sort_key
+from image_combiner import _filter_and_sort
 
 
 # ---------------------------------------------------------------------------

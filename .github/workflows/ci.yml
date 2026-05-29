@@ -60,4 +60,4 @@ jobs:
         run: pip install ruff
 
       - name: Run ruff
-        run: ruff check image_combiner.py
+        run: ruff check .

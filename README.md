@@ -28,13 +28,13 @@ Sometimes you need to merge several images into one without opening a photo edit
 | macOS    | Yes       |
 | Linux    | Yes       |
 
-Runs anywhere Python 3.8+ is installed.
+Runs anywhere Python 3.10+ is installed.
 
 ---
 
 ## Prerequisites
 
-**Python 3.8 or higher** — works on Windows, macOS, and Linux (Ubuntu / Debian).
+**Python 3.10 or higher** — works on Windows, macOS, and Linux (Ubuntu / Debian).
 
 ### Set up a virtual environment and install dependencies
 

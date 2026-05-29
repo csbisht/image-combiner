@@ -1,18 +1,20 @@
-## Summary
-<!-- What does this PR do? One or two sentences. -->
-
-## Related issue
-<!-- Closes #<issue-number> -->
+## What does this PR do?
+A short description of the change.
 
 ## Type of change
 - [ ] Bug fix
 - [ ] New feature
-- [ ] Refactor / cleanup
-- [ ] Documentation
-- [ ] CI / tooling
+- [ ] Documentation update
+- [ ] Dependency update
+- [ ] Other (describe below)
+
+## How to test
+Steps to verify this works:
+1. 
+2. 
 
 ## Checklist
-- [ ] Tests added or updated for the change
-- [ ] All existing tests pass (`pytest`)
-- [ ] Linting passes (`ruff check .`)
-- [ ] CHANGELOG.md updated under `[Unreleased]`
+- [ ] I tested this manually with real images
+- [ ] I followed the existing code style
+- [ ] I updated the README if needed
+- [ ] The CI checks pass

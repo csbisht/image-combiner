@@ -92,7 +92,7 @@ Your terminal prompt will return to normal, and the project's packages will no l
 |------|--------|
 | Minimum input images | 1 |
 | Maximum input images | No hard limit (limited by available RAM) |
-| Supported input formats | JPG, JPEG, PNG, GIF, BMP, TIFF, TIF, WebP |
+| Supported input formats | JPG, JPEG, PNG, GIF, BMP, TIFF, TIF, WebP (multi-frame GIF/TIFF: first frame only — a warning is printed) |
 | Supported output formats | JPG, JPEG, PNG, GIF, BMP, TIFF, TIF, WebP |
 | Quality range (JPEG/WebP) | 1 – 95 |
 | DPI range | Any positive integer (common: 72, 150, 300) |
@@ -196,6 +196,7 @@ python image_combiner.py IMAGE [IMAGE ...] [options]
 | `--direction` | `-d` | `vertical` | `vertical` (top-to-bottom) or `horizontal` (left-to-right) |
 | `--quality N` | `-q` | `85` | JPEG/WebP quality, 1–95. Higher = better quality, larger file |
 | `--dpi N` | | not set | Embed DPI metadata (72 = screen, 150 = medium, 300 = print) |
+| `--version` | | | Print version and exit |
 | `--help` | `-h` | | Show full help with examples and exit |
 
 Run with no arguments to see a quick usage summary:

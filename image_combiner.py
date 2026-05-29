@@ -3,16 +3,28 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import re
 import sys
+import warnings
 from pathlib import Path
 from typing import Iterable
 
 from PIL import Image
 
+try:
+    from importlib.metadata import version as _pkg_version
+    __version__ = _pkg_version("image-combiner")
+except Exception:
+    __version__ = "0.1.0"
+
 __all__ = ["combine_images", "main"]
 
 _IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp"}
+
+Image.MAX_IMAGE_PIXELS = 200_000_000  # explicit decompression-bomb cap (~200 MP)
+
+_log = logging.getLogger(__name__)
 
 
 def _natural_sort_key(path: Path) -> list:
@@ -53,48 +65,50 @@ def combine_images(
         raise ValueError("quality must be between 1 and 95")
 
     images: list[Image.Image] = []
-    try:
-        for path in image_paths:
-            images.append(Image.open(path).convert("RGBA"))
+    for path in image_paths:
+        with Image.open(path) as raw:
+            if getattr(raw, "n_frames", 1) > 1:
+                warnings.warn(
+                    f"{path}: multi-frame image; only the first frame will be used.",
+                    stacklevel=2,
+                )
+            images.append(raw.convert("RGBA"))
 
-        if not images:
-            raise ValueError("No images provided")
+    if not images:
+        raise ValueError("No images provided")
 
-        if direction == "horizontal":
-            total_width = sum(img.width for img in images)
-            max_height = max(img.height for img in images)
-            canvas = Image.new("RGBA", (total_width, max_height))
-            x = 0
-            for img in images:
-                canvas.paste(img, (x, 0), mask=img)
-                x += img.width
-        else:
-            max_width = max(img.width for img in images)
-            total_height = sum(img.height for img in images)
-            canvas = Image.new("RGBA", (max_width, total_height))
-            y = 0
-            for img in images:
-                canvas.paste(img, (0, y), mask=img)
-                y += img.height
-
-        save_kwargs: dict = {}
-        if dpi is not None:
-            save_kwargs["dpi"] = (dpi, dpi)
-
-        save_path = Path(output_path)
-        suffix = save_path.suffix.lower()
-        if suffix in (".jpg", ".jpeg"):
-            # Composite over white before dropping alpha; avoids black transparent areas
-            background = Image.new("RGB", canvas.size, (255, 255, 255))
-            background.paste(canvas, mask=canvas.getchannel("A"))
-            background.save(output_path, quality=quality, **save_kwargs)
-        elif suffix == ".webp":
-            canvas.save(output_path, quality=quality, **save_kwargs)
-        else:
-            canvas.save(output_path, **save_kwargs)
-    finally:
+    if direction == "horizontal":
+        total_width = sum(img.width for img in images)
+        max_height = max(img.height for img in images)
+        canvas = Image.new("RGBA", (total_width, max_height))
+        x = 0
         for img in images:
-            img.close()
+            canvas.paste(img, (x, 0), mask=img)
+            x += img.width
+    else:
+        max_width = max(img.width for img in images)
+        total_height = sum(img.height for img in images)
+        canvas = Image.new("RGBA", (max_width, total_height))
+        y = 0
+        for img in images:
+            canvas.paste(img, (0, y), mask=img)
+            y += img.height
+
+    save_kwargs: dict = {}
+    if dpi is not None:
+        save_kwargs["dpi"] = (dpi, dpi)
+
+    save_path = Path(output_path)
+    suffix = save_path.suffix.lower()
+    if suffix in (".jpg", ".jpeg"):
+        # Composite over white before dropping alpha; avoids black transparent areas
+        background = Image.new("RGB", canvas.size, (255, 255, 255))
+        background.paste(canvas, mask=canvas.getchannel("A"))
+        background.save(output_path, quality=quality, **save_kwargs)
+    elif suffix == ".webp":
+        canvas.save(output_path, quality=quality, **save_kwargs)
+    else:
+        canvas.save(output_path, **save_kwargs)
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -152,6 +166,11 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="DPI",
         help="Set output DPI metadata (e.g. 72=screen, 150=medium, 300=print; default: not set)",
     )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     return parser
 
 
@@ -172,13 +191,10 @@ def main(argv: list[str] | None = None) -> None:
         _print_brief_help(parser)
         sys.exit(0)
     args = parser.parse_args(argv)
-    if not (1 <= args.quality <= 95):
-        print("Error: --quality must be between 1 and 95", file=sys.stderr)
-        sys.exit(1)
     image_files = _filter_and_sort(args.images)
     skipped = set(args.images) - {str(p) for p in image_files}
     for s in sorted(skipped):
-        print(f"Skipped (not an image): {s}", file=sys.stderr)
+        _log.warning("Skipped (not an image): %s", s)
     try:
         combine_images(image_files, args.output, direction=args.direction,
                        quality=args.quality, dpi=args.dpi)

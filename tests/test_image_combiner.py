@@ -2,7 +2,7 @@ import pytest
 from pathlib import Path
 from PIL import Image
 
-from image_combiner import combine_images
+from image_combiner import combine_images, main
 from image_combiner import _filter_and_sort
 
 
@@ -174,3 +174,41 @@ class TestFilterAndSort:
             paths.append(str(p))
         result = _filter_and_sort(paths)
         assert len(result) == len(extensions)
+
+
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
+
+class TestCLI:
+    def test_version_flag_exits_zero(self, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            main(["--version"])
+        assert exc_info.value.code == 0
+        assert "0.1.0" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# combine_images — safety / side-effects
+# ---------------------------------------------------------------------------
+
+class TestSafety:
+    def test_multiframe_gif_warns(self, tmp_path):
+        gif_path = tmp_path / "animated.gif"
+        frame1 = Image.new("RGB", (10, 10), (255, 0, 0))
+        frame2 = Image.new("RGB", (10, 10), (0, 255, 0))
+        frame1.save(gif_path, save_all=True, append_images=[frame2])
+        with pytest.warns(UserWarning, match="first frame"):
+            combine_images([gif_path], tmp_path / "out.png")
+
+    def test_max_image_pixels_restored_after_combine(self, tmp_path):
+        before = Image.MAX_IMAGE_PIXELS
+        a = make_image(tmp_path, "a.png")
+        combine_images([a], tmp_path / "out.png")
+        assert Image.MAX_IMAGE_PIXELS == before
+
+    def test_max_image_pixels_restored_on_error(self, tmp_path):
+        before = Image.MAX_IMAGE_PIXELS
+        with pytest.raises((FileNotFoundError, OSError)):
+            combine_images([tmp_path / "ghost.png"], tmp_path / "out.png")
+        assert Image.MAX_IMAGE_PIXELS == before

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import logging
 import re
 import sys
 import warnings
@@ -22,9 +21,9 @@ __all__ = ["combine_images", "main"]
 
 _IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".tif", ".webp"}
 
-Image.MAX_IMAGE_PIXELS = 200_000_000  # explicit decompression-bomb cap (~200 MP)
-
-_log = logging.getLogger(__name__)
+# Matches Pillow's own default — set explicitly inside combine_images() and restored,
+# so importing this module never mutates the caller's global.
+_BOMB_PIXEL_LIMIT = 89_478_485
 
 
 def _natural_sort_key(path: Path) -> list:
@@ -64,51 +63,56 @@ def combine_images(
     if not (1 <= quality <= 95):
         raise ValueError("quality must be between 1 and 95")
 
-    images: list[Image.Image] = []
-    for path in image_paths:
-        with Image.open(path) as raw:
-            if getattr(raw, "n_frames", 1) > 1:
-                warnings.warn(
-                    f"{path}: multi-frame image; only the first frame will be used.",
-                    stacklevel=2,
-                )
-            images.append(raw.convert("RGBA"))
+    _saved_max_pixels = Image.MAX_IMAGE_PIXELS
+    Image.MAX_IMAGE_PIXELS = _BOMB_PIXEL_LIMIT
+    try:
+        images: list[Image.Image] = []
+        for path in image_paths:
+            with Image.open(path) as raw:
+                if getattr(raw, "n_frames", 1) > 1:
+                    warnings.warn(
+                        f"{path}: multi-frame image; only the first frame will be used.",
+                        stacklevel=2,
+                    )
+                images.append(raw.convert("RGBA"))
 
-    if not images:
-        raise ValueError("No images provided")
+        if not images:
+            raise ValueError("No images provided")
 
-    if direction == "horizontal":
-        total_width = sum(img.width for img in images)
-        max_height = max(img.height for img in images)
-        canvas = Image.new("RGBA", (total_width, max_height))
-        x = 0
-        for img in images:
-            canvas.paste(img, (x, 0), mask=img)
-            x += img.width
-    else:
-        max_width = max(img.width for img in images)
-        total_height = sum(img.height for img in images)
-        canvas = Image.new("RGBA", (max_width, total_height))
-        y = 0
-        for img in images:
-            canvas.paste(img, (0, y), mask=img)
-            y += img.height
+        if direction == "horizontal":
+            total_width = sum(img.width for img in images)
+            max_height = max(img.height for img in images)
+            canvas = Image.new("RGBA", (total_width, max_height))
+            x = 0
+            for img in images:
+                canvas.paste(img, (x, 0), mask=img)
+                x += img.width
+        else:
+            max_width = max(img.width for img in images)
+            total_height = sum(img.height for img in images)
+            canvas = Image.new("RGBA", (max_width, total_height))
+            y = 0
+            for img in images:
+                canvas.paste(img, (0, y), mask=img)
+                y += img.height
 
-    save_kwargs: dict = {}
-    if dpi is not None:
-        save_kwargs["dpi"] = (dpi, dpi)
+        save_kwargs: dict = {}
+        if dpi is not None:
+            save_kwargs["dpi"] = (dpi, dpi)
 
-    save_path = Path(output_path)
-    suffix = save_path.suffix.lower()
-    if suffix in (".jpg", ".jpeg"):
-        # Composite over white before dropping alpha; avoids black transparent areas
-        background = Image.new("RGB", canvas.size, (255, 255, 255))
-        background.paste(canvas, mask=canvas.getchannel("A"))
-        background.save(output_path, quality=quality, **save_kwargs)
-    elif suffix == ".webp":
-        canvas.save(output_path, quality=quality, **save_kwargs)
-    else:
-        canvas.save(output_path, **save_kwargs)
+        save_path = Path(output_path)
+        suffix = save_path.suffix.lower()
+        if suffix in (".jpg", ".jpeg"):
+            # Composite over white before dropping alpha; avoids black transparent areas
+            background = Image.new("RGB", canvas.size, (255, 255, 255))
+            background.paste(canvas, mask=canvas.getchannel("A"))
+            background.save(output_path, quality=quality, **save_kwargs)
+        elif suffix == ".webp":
+            canvas.save(output_path, quality=quality, **save_kwargs)
+        else:
+            canvas.save(output_path, **save_kwargs)
+    finally:
+        Image.MAX_IMAGE_PIXELS = _saved_max_pixels
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -194,7 +198,7 @@ def main(argv: list[str] | None = None) -> None:
     image_files = _filter_and_sort(args.images)
     skipped = set(args.images) - {str(p) for p in image_files}
     for s in sorted(skipped):
-        _log.warning("Skipped (not an image): %s", s)
+        print(f"Skipped (not an image): {s}", file=sys.stderr)
     try:
         combine_images(image_files, args.output, direction=args.direction,
                        quality=args.quality, dpi=args.dpi)

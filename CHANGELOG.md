@@ -18,7 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MIT License
 - `CONTRIBUTING.md` with setup, branch, and PR guidelines
 - `SECURITY.md` with vulnerability reporting policy
-- `CODE_OF_CONDUCT.md` — Contributor Covenant 2.1
 
 [Unreleased]: https://github.com/csbisht/image-combiner/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/csbisht/image-combiner/releases/tag/v0.1.0
